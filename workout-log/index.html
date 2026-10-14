@@ -1,0 +1,940 @@
+<title>트레이너 운동일지</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: sticky brand bar over a two-pane workspace (기록 | 메모·공유), one column on narrow screens.
+     Single light theme on purpose: it carries over ACERO GYM's existing green/lime identity. */
+  :root {
+    color-scheme: light;
+    --brand: #173f2d;
+    --brand-2: #234d38;
+    --lime: #c9f05a;
+    --bg: #eef2ef;
+    --panel: #ffffff;
+    --soft: #f6f9f6;
+    --ink: #17201b;
+    --ink-2: #32463a;
+    --muted: #66756c;
+    --line: #dde5df;
+    --line-2: #eaf0eb;
+    --on-brand: #ffffff;
+    --on-brand-2: #c8dacd;
+    --danger: #a73d3d;
+    --danger-soft: #fbeeee;
+    --font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", Arial, sans-serif;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body { font: 15px/1.5 var(--font); -webkit-font-smoothing: antialiased; word-break: keep-all; -webkit-tap-highlight-color: transparent; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; touch-action: manipulation; }
+  :focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
+  .num { font-variant-numeric: tabular-nums; }
+  svg.i { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ── 상단 바 ── */
+  .topbar {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: var(--brand); color: var(--on-brand);
+    padding-block: 12px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
+    box-shadow: 0 8px 24px rgb(17 46 33 / 14%);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .brand-mark { width: 40px; height: 40px; border-radius: 11px; background: var(--lime); color: var(--brand); display: grid; place-items: center; font-size: 24px; flex: none; }
+  .brand strong { display: block; font-size: 16.5px; letter-spacing: -.02em; }
+  .brand span { display: block; font-size: 11px; letter-spacing: .14em; color: var(--on-brand-2); font-weight: 600; }
+  .status { justify-self: center; display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 99px; background: rgb(255 255 255 / 9%); font-size: 13.5px; color: var(--on-brand); max-width: 100%; }
+  .status span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status.ok svg { color: var(--lime); }
+  .top-actions { justify-self: end; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .ghost { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgb(255 255 255 / 22%); background: transparent; color: var(--on-brand); border-radius: 10px; padding: 8px 11px; font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+  .ghost:hover { background: rgb(255 255 255 / 10%); }
+
+  .banner { margin: 12px auto 0; max-width: 1550px; background: var(--danger-soft); color: var(--danger); border-radius: 12px; padding: 10px 14px; font-size: 14px; }
+
+  /* ── 작업 영역 ── */
+  .workspace {
+    max-width: 1550px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .85fr); gap: 16px; align-items: start;
+    padding-block: 16px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .panel { background: var(--panel); border-radius: var(--radius); padding: 22px; box-shadow: 0 1px 2px rgb(23 63 45 / 6%); min-width: 0; }
+  .note-panel { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 82px); }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .eyebrow { display: block; font-size: 11px; font-weight: 700; letter-spacing: .16em; color: var(--muted); }
+  h1, h2 { margin: 2px 0 0; letter-spacing: -.03em; text-wrap: balance; }
+  h1 { font-size: 25px; }
+  h2 { font-size: 20px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--brand); background: var(--soft); border: 1px solid var(--line); padding: 5px 10px; border-radius: 99px; font-weight: 600; }
+
+  .field { display: grid; gap: 6px; min-width: 0; }
+  .field > span, .lbl { font-size: 12.5px; font-weight: 700; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
+  input[type="text"], input[type="search"], input[type="date"], input:not([type]), textarea, select {
+    width: 100%; min-width: 0; border: 1px solid var(--line); background: var(--soft); border-radius: 11px; padding: 11px 12px; font-size: 16px; color: var(--ink);
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--brand); background: var(--panel); box-shadow: 0 0 0 3px rgb(201 240 90 / 45%); }
+  textarea { resize: vertical; min-height: 92px; line-height: 1.6; }
+  .info-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, .8fr); gap: 12px; margin-top: 18px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
+  .chips > small { font-size: 12px; color: var(--muted); font-weight: 700; margin-right: 2px; }
+  .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 99px; padding: 6px 12px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+  .chip:hover { border-color: var(--brand); }
+  .chip.on { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
+
+  /* 과거 기록 */
+  .history { margin-top: 18px; background: var(--soft); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .history-title { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .history-title strong { font-size: 14.5px; }
+  .history-title small { color: var(--muted); font-size: 12.5px; }
+  .history-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(210px, 240px); gap: 8px; overflow-x: auto; margin-top: 10px; padding-bottom: 4px; scroll-snap-type: x proximity; }
+  .h-card { text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 11px 12px; display: grid; gap: 6px; scroll-snap-align: start; align-content: start; }
+  .h-card:hover { border-color: var(--brand); }
+  .h-card time { font-weight: 700; font-size: 13.5px; color: var(--brand); }
+  .h-card .rows { display: grid; gap: 3px; }
+  .h-card .rows span { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; font-size: 12.5px; color: var(--ink-2); }
+  .h-card .rows em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .h-card .rows b { font-weight: 500; color: var(--muted); }
+  .h-card small { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .confirm-bar { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--brand); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+  .confirm-bar span { flex: 1 1 200px; }
+
+  /* 운동 기록 */
+  .section-gap { margin-top: 26px; }
+  .mini { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--brand); color: var(--brand); background: var(--panel); border-radius: 10px; padding: 8px 12px; font-weight: 700; font-size: 13.5px; }
+  .mini:hover { background: var(--soft); }
+  .library { margin-top: 14px; border: 1px dashed var(--line); border-radius: 14px; padding: 12px; }
+  .library-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+  .library-head small { color: var(--muted); font-size: 12.5px; }
+  .adders { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 8px; margin-top: 8px; }
+  .inline-form { display: flex; gap: 6px; min-width: 0; }
+  .inline-form input { flex: 1; }
+  .inline-form button { flex: none; display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 11px; padding: 0 14px; background: var(--brand); color: var(--on-brand); font-weight: 700; font-size: 14px; }
+  .inline-form.alt button { background: var(--soft); color: var(--brand); border: 1px solid var(--line); }
+  .saved-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .saved-item { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); overflow: hidden; }
+  .saved-item > button { border: 0; background: transparent; padding: 7px 9px; color: var(--muted); display: inline-grid; place-items: center; font-size: 13px; }
+  .saved-item > button:hover { color: var(--ink); background: var(--soft); }
+  .saved-item > .pick { color: var(--ink-2); font-weight: 600; font-size: 13.5px; padding: 7px 4px 7px 13px; }
+  .saved-item.deleting { border-color: var(--danger); background: var(--danger-soft); padding-left: 12px; font-size: 13px; }
+  .saved-item.deleting .del { color: var(--danger); font-weight: 700; }
+  .saved-item form { display: inline-flex; align-items: center; }
+  .saved-item form input { border: 0; background: transparent; padding: 6px 4px 6px 12px; width: 150px; font-size: 14px; box-shadow: none; }
+  .empty-note { color: var(--muted); font-size: 13px; }
+
+  .ex-list { display: grid; gap: 10px; margin-top: 14px; }
+  .ex { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: var(--panel); display: grid; gap: 10px; }
+  .ex-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+  .ex-no { font-weight: 800; color: var(--brand); font-size: 14px; width: 26px; text-align: center; }
+  .ex-name { font-weight: 600; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); display: grid; place-items: center; font-size: 17px; }
+  .icon-btn:hover { color: var(--danger); border-color: var(--danger); }
+  .ex-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 36px; }
+  .stepper { display: inline-grid; grid-template-columns: 38px 62px 38px; align-items: stretch; border: 1px solid var(--line); border-radius: 11px; overflow: hidden; background: var(--soft); }
+  .stepper button { border: 0; background: transparent; font-size: 20px; font-weight: 500; color: var(--brand); }
+  .stepper button:hover { background: var(--line-2); }
+  .stepper label { display: flex; align-items: center; justify-content: center; gap: 2px; border-inline: 1px solid var(--line); background: var(--panel); padding-right: 6px; }
+  .stepper input { border: 0; background: transparent; width: 100%; text-align: right; padding: 9px 2px 9px 4px; font-weight: 700; font-variant-numeric: tabular-nums; box-shadow: none !important; }
+  .stepper label span { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .step-select { width: auto; padding: 9px 8px; font-size: 13.5px; font-weight: 600; color: var(--brand); }
+  .ex-last { margin-left: 36px; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; font-size: 13px; background: var(--soft); border-radius: 9px; padding: 7px 10px; }
+  .ex-last b { color: var(--brand); font-size: 12px; }
+  .ex-last time { color: var(--muted); }
+  .ex-last strong { font-weight: 600; color: var(--ink-2); }
+  .ex-last .none { color: var(--muted); }
+  .coach { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line-2); }
+
+  /* 메모 패널 */
+  .organize { margin-top: 10px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px; padding: 13px; background: var(--lime); color: var(--brand); font-weight: 800; font-size: 15.5px; }
+  .organize:disabled { opacity: .6; cursor: progress; }
+  .comment-result { margin-top: 14px; }
+  .comment-result textarea { min-height: 230px; background: var(--panel); }
+  .comment-raw textarea { min-height: 120px; margin-top: 12px; }
+  .hint { color: var(--muted); font-size: 12.5px; font-weight: 500; }
+  .actions { display: grid; grid-template-columns: 1fr 1.3fr; gap: 8px; margin-top: 14px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 14px 12px; font-weight: 800; font-size: 15px; border: 1px solid var(--brand); }
+  .btn.primary { background: var(--brand); color: var(--on-brand); }
+  .btn.primary:hover { background: var(--brand-2); }
+  .btn.secondary { background: var(--panel); color: var(--brand); }
+  .btn:disabled { opacity: .55; cursor: progress; }
+  .share-note { margin: 12px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+  .err { color: var(--danger); font-size: 13px; }
+
+  /* 대화상자 */
+  dialog { border: 0; padding: 0; border-radius: 18px; width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); background: var(--panel); color: var(--ink); box-shadow: 0 30px 80px rgb(12 30 20 / 30%); }
+  dialog::backdrop { background: rgb(15 32 23 / 45%); }
+  .dlg { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; max-height: calc(100dvh - 48px); }
+  .dlg-head { display: flex; justify-content: space-between; gap: 12px; padding: 20px 22px 6px; }
+  .dlg-head p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+  .dlg-body { padding: 12px 22px; overflow-y: auto; min-height: 0; }
+  .dlg-foot { padding: 12px 22px 20px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line-2); }
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .settings-grid .wide { grid-column: 1 / -1; }
+  .settings-grid textarea { min-height: 96px; }
+  .lookup-form { display: flex; gap: 6px; padding: 8px 22px 4px; }
+  .lookup-form input { flex: 1; }
+  .lookup-form button { border: 0; border-radius: 11px; padding: 0 18px; background: var(--brand); color: var(--on-brand); font-weight: 700; }
+  .lookup-summary { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 10px; }
+  .lookup-summary strong { font-size: 17px; }
+  .lookup-summary span { color: var(--muted); font-size: 13.5px; }
+  .rec { border: 1px solid var(--line); border-radius: 13px; overflow: hidden; margin-bottom: 10px; }
+  .rec header { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: center; background: var(--soft); padding: 9px 13px; }
+  .rec header time { font-weight: 700; color: var(--brand); }
+  .rec-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rec-actions .warn { font-size: 12.5px; color: var(--danger); background: var(--danger-soft); padding: 3px 8px; border-radius: 99px; }
+  .small-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 9px; padding: 6px 10px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .small-btn.danger { border-color: var(--danger); color: var(--danger); }
+  .small-btn.danger.solid { background: var(--danger); color: var(--on-brand); }
+  .rec-rows > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 10px; padding: 8px 13px; border-top: 1px solid var(--line-2); font-size: 13.5px; }
+  .rec-rows strong { font-weight: 600; }
+  .rec-rows span { color: var(--muted); text-align: right; }
+  .rec-rows p { margin: 0; padding: 10px 13px; color: var(--muted); font-size: 13px; }
+
+  /* 시작 화면 */
+  .intro { position: fixed; inset: 0; z-index: 100; background: var(--brand); display: grid; place-items: center; animation: intro-out .35s ease 1.1s forwards; }
+  .intro-brand { display: grid; justify-items: center; gap: 4px; color: var(--on-brand); animation: intro-in .7s cubic-bezier(.2,.8,.2,1) both; }
+  .intro-name { font: 900 54px/1 var(--font); letter-spacing: .2em; padding-left: .2em; }
+  .intro-gym { font-weight: 700; letter-spacing: .5em; padding-left: .5em; color: var(--lime); font-size: 15px; }
+  .intro-line { width: 64px; height: 3px; background: var(--lime); margin-top: 10px; border-radius: 3px; }
+  @keyframes intro-in { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+  @keyframes intro-out { to { opacity: 0; visibility: hidden; } }
+
+  @media (max-width: 1050px) {
+    .workspace { grid-template-columns: minmax(0, 1fr); }
+    .note-panel { position: static; }
+  }
+  @media (max-width: 720px) {
+    .topbar { grid-template-columns: minmax(0, 1fr) auto; }
+    .status { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; justify-content: center; }
+    .top-actions .ghost span { display: none; }
+    .ghost { padding: 9px; font-size: 16px; }
+    .panel { padding: 16px; }
+    .adders { grid-template-columns: minmax(0, 1fr); }
+    .ex-controls, .ex-last { padding-left: 0; margin-left: 0; }
+    .actions { grid-template-columns: 1fr; }
+    .settings-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 420px) {
+    .info-grid { grid-template-columns: minmax(0, 1fr); }
+    .stepper { grid-template-columns: 36px 56px 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+    .intro-brand { animation: none; }
+    .intro { animation: intro-out 0s linear 1.1s forwards; }
+  }
+</style>
+
+<div id="app"><div class="intro" aria-hidden="true"><div class="intro-brand"><span class="intro-name">ACERO</span><span class="intro-gym">GYM</span><span class="intro-line"></span></div></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script>
+(() => {
+  const { useState, useEffect, useRef, useMemo } = React;
+  const html = htm.bind(React.createElement);
+
+  /* ───────── 기본값 ───────── */
+  const pad = (n) => String(n).padStart(2, "0");
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const emptyExercise = () => ({ id: makeId(), name: "", weight: "", reps: "", sets: "" });
+  const initialLog = () => ({ member: "", date: today(), goal: "", pain: "", exercises: [emptyExercise(), emptyExercise(), emptyExercise()], commentRaw: "", commentAi: "" });
+  const weightSteps = [1, 4.5, 5, 7.5];
+  const normalizeWeight = (v) => String(Math.round(v * 10) / 10);
+  const keyOf = (name) => (name || "").trim().toLocaleLowerCase("ko-KR");
+  const isBlank = (e) => !e.name.trim() && !String(e.weight).trim() && !String(e.reps).trim() && !String(e.sets).trim();
+  const summary = (e) => e.setDetails && e.setDetails.length
+    ? e.setDetails.map((s) => `${s.kind && s.kind !== "일반" ? s.kind + " " : ""}${s.weight || "-"}kg × ${s.reps || "-"}회`).join(" · ")
+    : `${e.weight || "-"}kg · ${e.reps || "-"}회 × ${e.sets || "-"}세트`;
+  const fmtLong = (d) => new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric" }).format(new Date(`${d}T00:00:00`));
+  const fmtShort = (d) => new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric" }).format(new Date(`${d}T00:00:00`));
+  const byRecent = (a, b) => (b.date || "").localeCompare(a.date || "") || (b.savedAt || 0) - (a.savedAt || 0);
+
+  const defaultSettings = {
+    tone: "회원이 이해하기 쉬운 존댓말로 간결하고 따뜻하게 작성해주세요.",
+    mustInclude: "운동별 자세 포인트와 트레이너의 실제 피드백, 오늘 운동한 부위와 움직임을 간결하게 설명해주세요.",
+    avoid: "진단처럼 단정하는 표현, 과장된 표현, 입력하지 않은 사실이나 중량은 쓰지 마세요.",
+    examples: "",
+  };
+  const centerLibrary = [
+    "밴트오버로우머신", "사이드레터럴레이즈머신", "시티드레그프레스머신", "아웃타이머신", "이너타이머신",
+    "레그익스텐션머신", "레그컬머신", "숄더프레스머신", "바이셉스컬머신", "펙덱플라이머신",
+    "리버스펙덱플라이머신", "인클라인벤치프레스머신", "힙쓰러스트머신", "버스트숄더프레스머신",
+    "버스트시티드로우머신", "로테이션로우머신", "와이드풀다운머신", "랫풀다운머신", "시티드로우머신",
+    "파워레그프레스머신", "스쿼트", "데드리프트", "벤치프레스", "런지", "케틀벨 스윙", "싱글레그 데드리프트",
+    "월볼", "스키에르그", "로잉", "에어바이크", "무동력 트레드밀", "불가리안백",
+  ];
+  const FORMAT_RULES = `당신은 담당 트레이너의 회원용 운동일지를 작성한다. 아래 형식을 최우선으로 지킨다.
+1. 기록된 운동마다 운동명을 원문 그대로 한 줄에 쓴다. 그 아래 한 문단으로 해당 운동의 자세 포인트, 어느 부위/움직임에 좋은지, 트레이너 메모에 나온 실제 수행 피드백을 자연스럽게 1~3문장으로 쓴다. 운동과 운동 사이에만 빈 줄을 하나 둔다.
+2. 마지막에 '이번 수업 포인트'를 한 줄 쓰고, 그 아래 이번 수업의 운동이 어떤 부위와 움직임에 도움이 되는지를 묶어서 1~2문장으로 쓴다.
+3. 인사말, '트레이너 코멘트' 제목, 운동 횟수/중량 나열, 향후 계획, 문장 사이 빈 줄은 쓰지 않는다. 운동 수치와 인사말은 이미지에서 따로 넣는다.
+4. 메모에 없는 개인 자세 개선이나 수행 결과를 관찰한 사실처럼 꾸며 쓰지 않는다. 일반적인 자세 설명은 가능하되 통증 진단과 효과 단정은 피한다. 쉬운 존댓말을 사용한다.
+5. '오늘은'이라는 말은 쓰지 않고 '이번수업에서는'으로 쓴다.
+6. 마크다운 기호(#, *, -, 번호)를 쓰지 않는다.`;
+
+  const ls = {
+    get(k, fallback) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* 이 기기 저장이 막혀 있어도 DB 저장은 동작 */ } },
+    del(k) { try { localStorage.removeItem(k); } catch { /* 무시 */ } },
+  };
+  const DRAFT_KEY = "trainer-workout-draft";
+  const STEP_KEY = "trainer-exercise-steps";
+
+  const sampleErrorCopy = (code) => ({
+    not_granted: "Claude 사용이 허용되지 않았어요. 아티팩트 권한에서 허용해주세요",
+    sampling_disabled: "이 계정에서는 Claude 정리 기능을 쓸 수 없어요",
+    rate_limited: "요청이 많아요. 잠시 후 다시 눌러주세요",
+    session_expired: "claude.ai에 다시 로그인해주세요",
+    refused: "이 메모로는 정리할 수 없었어요. 메모를 조금 바꿔주세요",
+    empty_completion: "정리 결과가 비어 있어요. 메모를 조금 더 적어주세요",
+  }[code] || "코멘트를 정리하지 못했어요. 잠시 후 다시 시도해주세요");
+
+  /* ───────── 아이콘 (lucide 모양) ───────── */
+  const ICONS = {
+    dumbbell: ["M6.5 6v12", "M17.5 6v12", "M3.5 9v6", "M20.5 9v6", "M6.5 12h11"],
+    check: ["M20 6 9 17l-5-5"],
+    pen: ["M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z", "m15 5 4 4"],
+    userSearch: ["c10 8 5", "M2 21a8 8 0 0 1 10.434-7.62", "c18 18 3", "m22 22-1.9-1.9"],
+    sliders: ["M20 7h-9", "M14 17H5", "c17 17 3", "c7 7 3"],
+    reset: ["M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5"],
+    shield: ["M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z", "m9 12 2 2 4-4"],
+    calendar: ["M8 2v4", "M16 2v4", "r3 4 18 18 2", "M3 10h18"],
+    history: ["M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5", "M12 7v5l4 2"],
+    plus: ["M5 12h14", "M12 5v14"],
+    search: ["c11 11 8", "m21 21-4.3-4.3"],
+    bookmark: ["m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z", "M12 7v6", "M15 10H9"],
+    trash: ["M3 6h18", "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6", "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"],
+    x: ["M18 6 6 18", "m6 6 12 12"],
+    sparkles: ["M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z", "M20 3v4", "M22 5h-4"],
+    save: ["M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7", "M7 3v4a1 1 0 0 0 1 1h7"],
+    send: ["M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z", "m21.854 2.147-10.94 10.939"],
+  };
+  function Icon({ name }) {
+    return html`<svg className="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name].map((d, i) => {
+      if (d[0] === "c") { const [cx, cy, r] = d.slice(1).split(" "); return html`<circle key=${i} cx=${cx} cy=${cy} r=${r} />`; }
+      if (d[0] === "r") { const [x, y, w, h, rx] = d.slice(1).split(" "); return html`<rect key=${i} x=${x} y=${y} width=${w} height=${h} rx=${rx} />`; }
+      return html`<path key=${i} d=${d} />`;
+    })}</svg>`;
+  }
+
+  /* ───────── 대화상자 ───────── */
+  function Modal({ open, onClose, labelledBy, children }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const el = ref.current; if (!el) return;
+      if (open && !el.open) { try { el.showModal(); } catch { el.setAttribute("open", ""); } }
+      if (!open && el.open) el.close();
+    }, [open]);
+    return html`<dialog ref=${ref} aria-labelledby=${labelledBy} onClose=${onClose} onClick=${(e) => { if (e.target === ref.current) onClose(); }}>${open ? children : null}</dialog>`;
+  }
+
+  /* ───────── 리포트 이미지 ───────── */
+  const F = 'Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+  async function createReports(record) {
+    const memberName = (record.member || "").trim().replace(/\s*(회원님|님)$/, "");
+    const greetingName = /^[가-힣]{3,4}$/.test(memberName) ? memberName.slice(-2) : memberName || "회원";
+    const measure = document.createElement("canvas").getContext("2d");
+    const wrap = (value, width, font) => {
+      measure.font = font;
+      const lines = [];
+      for (const paragraph of value.replace(/\r/g, "").split("\n")) {
+        if (!paragraph.trim()) continue;
+        let line = "";
+        for (const ch of Array.from(paragraph)) {
+          if (line && measure.measureText(line + ch).width > width) { lines.push(line); line = ch; } else line += ch;
+        }
+        lines.push(line);
+      }
+      return lines;
+    };
+    const pages = [];
+    let items = [], y = 345, currentSection = "";
+    const maxY = 5750;
+    const nextPage = () => {
+      pages.push({ items, height: Math.max(850, y + 110) });
+      items = []; y = 345;
+      if (currentSection) { items.push({ kind: "heading", y, text: `${currentSection} (계속)` }); y += 54; }
+    };
+    const ensure = (h) => { if (y + h > maxY) nextPage(); };
+    const heading = (t) => { ensure(110); currentSection = t; items.push({ kind: "heading", y, text: t }); y += 49; };
+    const line = (text, kind = "line", stats) => { ensure(32); items.push({ kind, y, text, stats }); y += 31; };
+    const rule = () => { ensure(17); items.push({ kind: "rule", y }); y += 17; };
+    const paragraph = (value, kind = "line") => {
+      for (const part of value.split(/\n+/).map((p) => p.trim()).filter(Boolean)) {
+        const chars = Array.from(part.replace(/오늘은/g, "이번수업에서는"));
+        const sentences = []; let s = "";
+        chars.forEach((ch, i) => {
+          s += ch;
+          const numberPunct = /\d/.test(chars[i - 1] || "") && /\d/.test(chars[i + 1] || "");
+          if ((ch === "," || ch === ".") && !numberPunct) { sentences.push(s.trim()); s = ""; }
+        });
+        if (s.trim()) sentences.push(s.trim());
+        for (const seg of sentences) for (const w of wrap(seg, kind === "note" ? 970 : 990, `500 23px ${F}`)) line(w, kind);
+      }
+    };
+
+    const active = record.exercises.filter((e) => e.name.trim());
+    const notes = new Map(); const remainder = []; const points = []; let section = null;
+    for (const raw of (record.commentAi || "").replace(/\r/g, "").split("\n")) {
+      const v = raw.trim().replace(/^#{1,3}\s*/, "").replace(/^\d+[.)]\s*/, "").replace(/^\*\*(.*?)\*\*$/, "$1").replace(/:$/, "");
+      if (!v) continue;
+      const m = active.find((e) => e.name.trim() === v);
+      if (m) { section = m.name.trim(); if (!notes.has(section)) notes.set(section, []); continue; }
+      if (v === "이번 수업 포인트") { section = "summary"; continue; }
+      if (v === "트레이너 코멘트" || v.startsWith(`${record.member || "회원"}님 수고`)) { section = null; continue; }
+      if (section === "summary") points.push(v); else if (section) notes.get(section).push(v); else remainder.push(v);
+    }
+
+    line(`${greetingName}님 수고많으셨습니다! :)`, "greeting"); y += 16;
+    if (record.pain.trim()) { heading("통증·주의사항"); paragraph(record.pain.trim()); y += 16; }
+    heading("이번 수업 운동");
+    if (!active.length) line("기록된 운동이 없습니다.");
+    for (const e of active) {
+      wrap(e.name || "-", 500, `600 23px ${F}`).forEach((n, i) => line(n, "exercise", i === 0 ? [
+        e.weight ? `${e.weight} kg` : "-", e.reps ? `${e.reps} 회` : "-", e.sets ? `${e.sets} 세트` : "-",
+      ] : undefined));
+      rule();
+    }
+    if (notes.size) {
+      y += 12; heading("트레이너 코멘트");
+      for (const e of active) {
+        const d = notes.get(e.name.trim());
+        if (!d || !d.length) continue;
+        line(e.name.trim(), "exercise"); paragraph(d.join(" "), "note"); y += 10;
+      }
+    }
+    if (remainder.length || (!record.commentAi.trim() && record.commentRaw.trim())) {
+      y += 12; heading(notes.size ? "추가 메모" : "트레이너 코멘트");
+      paragraph(remainder.length ? remainder.join(" ") : record.commentRaw);
+    }
+    if (points.length) { y += 12; heading("이번 수업 포인트"); paragraph(points.join(" ")); }
+    pages.push({ items, height: Math.max(850, y + 110) });
+
+    const blobs = [];
+    for (const [index, page] of pages.entries()) {
+      const c = document.createElement("canvas"); c.width = 1200; c.height = page.height;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#f4f7f2"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.fillStyle = "#173f2d"; ctx.fillRect(0, 0, 1200, 190);
+      ctx.fillStyle = "#c9f05a"; ctx.fillRect(76, 58, 74, 74);
+      ctx.fillStyle = "#173f2d"; ctx.font = `700 38px ${F}`; ctx.textAlign = "center"; ctx.fillText("D", 113, 108); ctx.textAlign = "left";
+      ctx.fillStyle = "#ffffff"; ctx.font = `700 48px ${F}`; ctx.fillText("WORKOUT LOG", 178, 96);
+      ctx.font = `400 24px ${F}`; ctx.fillStyle = "#dce9e1"; ctx.fillText("담당 트레이너 · ACERO GYM", 180, 136);
+      ctx.fillStyle = "#ffffff"; ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(60, 220, 1080, page.height - 290, 24); else ctx.rect(60, 220, 1080, page.height - 290);
+      ctx.fill();
+      ctx.fillStyle = "#698074"; ctx.font = `600 22px ${F}`; ctx.fillText("MEMBER", 94, 270); ctx.fillText("DATE", 900, 270);
+      ctx.fillStyle = "#17201b"; ctx.font = `700 34px ${F}`; ctx.fillText(memberName ? `${memberName} 회원님` : "회원님", 94, 320, 760);
+      ctx.font = `600 26px ${F}`; ctx.fillText(record.date, 900, 318);
+      for (const it of page.items) {
+        if (it.kind === "heading") {
+          ctx.fillStyle = "#173f2d"; ctx.font = `700 27px ${F}`; ctx.fillText(it.text || "", 94, it.y + 28);
+          ctx.fillStyle = "#e8efe9"; ctx.fillRect(94, it.y + 37, 1012, 2);
+        } else if (it.kind === "rule") {
+          ctx.strokeStyle = "#e5ebe6"; ctx.beginPath(); ctx.moveTo(94, it.y + 5); ctx.lineTo(1106, it.y + 5); ctx.stroke();
+        } else {
+          const strong = it.kind === "exercise" || it.kind === "greeting";
+          ctx.fillStyle = strong ? "#17201b" : "#32463a";
+          ctx.font = `${strong ? 600 : 500} 23px ${F}`;
+          ctx.fillText(it.text || "", it.kind === "note" ? 118 : 104, it.y + 26);
+          if (it.stats) {
+            ctx.font = `500 22px ${F}`; ctx.fillStyle = "#52675b";
+            ctx.fillText(it.stats[0], 650, it.y + 26, 145); ctx.fillText(it.stats[1], 820, it.y + 26, 130); ctx.fillText(it.stats[2], 978, it.y + 26, 120);
+          }
+        }
+      }
+      ctx.fillStyle = "#6c7d73"; ctx.font = `500 20px ${F}`;
+      ctx.fillText("수고많으셨습니다! 다음 수업에 만나요 :)", 70, page.height - 42);
+      if (pages.length > 1) { ctx.textAlign = "right"; ctx.fillText(`${index + 1} / ${pages.length}`, 1120, page.height - 42); }
+      blobs.push(await new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("이미지를 만들지 못했어요"))), "image/png")));
+      c.width = 0; c.height = 0;
+    }
+    return blobs;
+  }
+
+  /* ───────── 앱 ───────── */
+  function Intro() {
+    const [show, setShow] = useState(true);
+    useEffect(() => { const t = setTimeout(() => setShow(false), 1500); return () => clearTimeout(t); }, []);
+    if (!show) return null;
+    return html`<div className="intro" aria-hidden="true" onPointerDown=${() => setShow(false)}><div className="intro-brand"><span className="intro-name">ACERO</span><span className="intro-gym">GYM</span><span className="intro-line"></span></div></div>`;
+  }
+
+  function App() {
+    const draft = useMemo(() => ls.get(DRAFT_KEY, null), []);
+    const restored = draft && draft.log && Array.isArray(draft.log.exercises);
+    const [log, setLog] = useState(() => restored
+      ? { ...initialLog(), ...draft.log, exercises: draft.log.exercises.length ? draft.log.exercises.map((e) => ({ ...emptyExercise(), ...e, id: e.id || makeId() })) : [emptyExercise()] }
+      : initialLog());
+    const [currentId, setCurrentId] = useState(restored ? draft.currentId || "" : "");
+    const [saved, setSaved] = useState(false);
+    const [message, setMessage] = useState(restored ? "작성 중이던 일지를 복구했어요" : "새 운동일지");
+    const [dbStatus, setDbStatus] = useState("loading");
+    const [records, setRecords] = useState([]);
+    const [savedExercises, setSavedExercises] = useState([]);
+    const [steps, setSteps] = useState(() => ls.get(STEP_KEY, {}));
+    const [settings, setSettings] = useState(defaultSettings);
+    const [canSample, setCanSample] = useState(false);
+    const [canDownload, setCanDownload] = useState(false);
+    const [organizing, setOrganizing] = useState(false);
+    const [busy, setBusy] = useState("");
+    const [search, setSearch] = useState("");
+    const [newName, setNewName] = useState("");
+    const [editing, setEditing] = useState("");
+    const [editingName, setEditingName] = useState("");
+    const [pendingDeleteExercise, setPendingDeleteExercise] = useState("");
+    const [pendingHistory, setPendingHistory] = useState(null);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [savingSettings, setSavingSettings] = useState(false);
+    const [lookupOpen, setLookupOpen] = useState(false);
+    const [lookupInput, setLookupInput] = useState("");
+    const [lookupQuery, setLookupQuery] = useState("");
+    const [pendingDeleteLog, setPendingDeleteLog] = useState("");
+    const [deletingLog, setDeletingLog] = useState("");
+    const [lookupError, setLookupError] = useState("");
+
+    const dbRef = useRef(null), sampleRef = useRef(null), downloadsRef = useRef(null);
+    const logRef = useRef(log); logRef.current = log;
+    const idRef = useRef(currentId); idRef.current = currentId;
+    const keyRef = useRef(restored ? draft.currentKey || "" : "");
+    const libWrite = useRef(Promise.resolve());
+    const firstLoad = useRef(true);
+
+    const edit = (fn) => { setLog(fn); setSaved(false); };
+
+    /* 저장소·Claude·파일 저장 연결 */
+    useEffect(() => {
+      let alive = true; const unsubs = [];
+      (async () => {
+        const cl = window.claude;
+        if (!cl || typeof cl.use !== "function") { setDbStatus("off"); return; }
+        const [db, sample, downloads] = await Promise.all([cl.use("db"), cl.use("sample"), cl.use("downloads")]);
+        if (!alive) return;
+        sampleRef.current = sample; downloadsRef.current = downloads;
+        setCanSample(!!sample); setCanDownload(!!downloads);
+        if (!db) { setDbStatus("off"); return; }
+        dbRef.current = db;
+        unsubs.push(db.collection("logs").orderBy("savedAt", "desc").limit(1000).onSnapshot((snap) => {
+          const rows = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+          setRecords(rows); setDbStatus("ready");
+          if (firstLoad.current) {
+            firstLoad.current = false;
+            if (!restored) setMessage(rows.length ? `저장된 수업 ${rows.length}개를 불러왔어요` : "새 운동일지");
+          }
+        }, () => { setDbStatus("error"); setMessage("기록을 불러오지 못했어요. 페이지를 다시 열어주세요"); }));
+        unsubs.push(db.doc("config/exercises").onSnapshot((s) => {
+          const names = s.exists && Array.isArray(s.data().names) ? s.data().names : [];
+          setSavedExercises(names);
+        }, () => {}));
+        try {
+          const s = await db.doc("config/comment-settings").get();
+          if (alive && s.exists) setSettings({ ...defaultSettings, ...s.data() });
+        } catch { /* 기본 설정으로 동작 */ }
+      })();
+      return () => { alive = false; unsubs.forEach((u) => u()); };
+    }, []);
+
+    /* 작성 중 자동 임시저장 (이 기기) */
+    useEffect(() => {
+      const t = setTimeout(() => {
+        if (saved) { ls.del(DRAFT_KEY); return; }
+        const hasContent = log.member.trim() || log.pain.trim() || log.commentRaw.trim() || log.commentAi.trim() || log.date !== today() || log.exercises.some((e) => !isBlank(e));
+        if (hasContent) ls.set(DRAFT_KEY, { log, currentId, currentKey: keyRef.current }); else ls.del(DRAFT_KEY);
+      }, 200);
+      return () => clearTimeout(t);
+    }, [log, saved, currentId]);
+
+    /* 파생 데이터 */
+    const recentMembers = useMemo(() => [...new Set(records.map((r) => r.member).filter(Boolean))].slice(0, 12), [records]);
+    const member = log.member.trim();
+    const memberRecords = useMemo(() => member ? records.filter((r) => r.member === member).sort(byRecent) : [], [records, member]);
+    const memberHistory = memberRecords.slice(0, 5);
+    const lastRecords = useMemo(() => {
+      const out = {};
+      for (const r of memberRecords) {
+        if (r.id === currentId) continue;
+        for (const e of r.exercises || []) { const k = keyOf(e.name); if (k && !out[k]) out[k] = { ...e, date: r.date }; }
+      }
+      return out;
+    }, [memberRecords, currentId]);
+    const library = useMemo(() => [...new Set(savedExercises)].sort((a, b) => a.localeCompare(b, "ko")), [savedExercises]);
+    const matching = (search.trim() ? library.filter((n) => keyOf(n).includes(keyOf(search))) : library).slice(0, 14);
+    const lookupResults = useMemo(() => lookupQuery ? records.filter((r) => r.member === lookupQuery).sort(byRecent) : [], [records, lookupQuery]);
+    const lookupSuggestions = useMemo(() => lookupQuery && !lookupResults.length
+      ? [...new Set(records.map((r) => r.member))].filter((n) => n.includes(lookupQuery)).slice(0, 8) : [], [records, lookupQuery, lookupResults]);
+
+    /* 운동 편집 */
+    const stepFor = (e) => steps[e.name.trim()] ?? e.step ?? (lastRecords[keyOf(e.name)] || {}).step ?? 5;
+    const updateExercise = (id, key, value) => edit((c) => ({ ...c, exercises: c.exercises.map((e) => e.id !== id ? e : {
+      ...e, [key]: value, ...(key === "name" && value.trim() && !e.name.trim() ? { reps: e.reps || "15", sets: e.sets || "4" } : {}),
+    }) }));
+    const bump = (id, key, dir) => edit((c) => ({ ...c, exercises: c.exercises.map((e) => {
+      if (e.id !== id) return e;
+      if (key === "weight") return { ...e, weight: normalizeWeight(Math.max(0, (Number(e.weight) || 0) + dir * stepFor(e))) };
+      if (key === "reps") return { ...e, reps: String(Math.max(0, (e.reps === "" ? 15 : Number(e.reps) || 0) + dir)) };
+      return { ...e, sets: String(Math.max(0, (Number(e.sets) || 0) + dir)) };
+    }) }));
+    const changeStep = (e, step) => {
+      edit((c) => ({ ...c, exercises: c.exercises.map((x) => x.id === e.id ? { ...x, step } : x) }));
+      if (e.name.trim()) setSteps((cur) => { const next = { ...cur, [e.name.trim()]: step }; ls.set(STEP_KEY, next); return next; });
+    };
+    const addExercise = (name) => {
+      const next = { id: makeId(), name, weight: "", reps: "15", sets: "4", ...(steps[name] ? { step: steps[name] } : {}) };
+      edit((c) => {
+        const i = c.exercises.findIndex(isBlank);
+        if (i < 0) return { ...c, exercises: [...c.exercises, next] };
+        const exercises = [...c.exercises]; exercises[i] = next; return { ...c, exercises };
+      });
+      setMessage(lastRecords[keyOf(name)] ? `${name}을 불러왔어요. 지난 운동 기록을 확인하세요` : `${name}을 추가했어요`);
+    };
+
+    /* 종목 보관함 (DB) */
+    const writeLibrary = (names) => {
+      const db = dbRef.current;
+      if (!db) { setMessage("저장소에 연결되지 않아 보관함을 바꿀 수 없어요"); return Promise.reject(new Error("no-db")); }
+      libWrite.current = libWrite.current.catch(() => {}).then(() => db.doc("config/exercises").set({ names, updatedAt: Date.now() }));
+      return libWrite.current;
+    };
+    const saveNewExercise = async (ev) => {
+      ev.preventDefault();
+      const name = newName.trim(); if (!name) return;
+      if (library.includes(name)) { setMessage("이미 보관함에 있는 종목이에요"); return; }
+      try { await writeLibrary([...savedExercises, name]); setNewName(""); setMessage(`${name}을 보관함에 저장했어요`); }
+      catch { setMessage("종목을 저장하지 못했어요"); }
+    };
+    const renameExercise = async (ev, oldName) => {
+      ev.preventDefault();
+      const nn = editingName.trim();
+      if (!nn) { setMessage("새 종목 이름을 입력해주세요"); return; }
+      if (nn !== oldName && library.includes(nn)) { setMessage("이미 같은 이름의 종목이 있어요"); return; }
+      try {
+        await writeLibrary(savedExercises.map((n) => n === oldName ? nn : n));
+        edit((c) => ({ ...c, exercises: c.exercises.map((e) => e.name === oldName ? { ...e, name: nn } : e) }));
+        setEditing(""); setEditingName(""); setMessage(`${oldName}을 ${nn}(으)로 바꿨어요`);
+      } catch { setMessage("종목 이름을 바꾸지 못했어요"); }
+    };
+    const deleteExercise = async (name) => {
+      try { await writeLibrary(savedExercises.filter((n) => n !== name)); setPendingDeleteExercise(""); setMessage(`${name}을 보관함에서 삭제했어요`); }
+      catch { setMessage("종목을 삭제하지 못했어요"); }
+    };
+
+    /* 과거 기록에서 종목 불러오기 */
+    const applyHistory = (r) => {
+      const exercises = (r.exercises || []).filter((e) => e.name.trim()).map((e) => ({ id: makeId(), name: e.name, weight: "", reps: "15", sets: "4", ...(steps[e.name] || e.step ? { step: steps[e.name] || e.step } : {}) }));
+      if (!exercises.length) { setMessage("불러올 운동 종목이 없어요"); return; }
+      edit((c) => ({ ...c, exercises })); setPendingHistory(null);
+      setMessage(`${fmtShort(r.date)} 운동 종목을 불러왔어요`);
+    };
+    const pickHistory = (r) => {
+      if (logRef.current.exercises.some((e) => !isBlank(e))) setPendingHistory(r); else applyHistory(r);
+    };
+
+    /* 저장 */
+    const saveLog = async () => {
+      const db = dbRef.current;
+      const cur = logRef.current;
+      const fail = (msg) => { setMessage(msg); const e = new Error(msg); e.shown = true; throw e; };
+      if (!db) fail("저장소에 연결되지 않아 저장할 수 없어요");
+      if (!cur.member.trim()) fail("회원 이름을 입력해주세요");
+      const recKey = `${cur.member.trim()}|${cur.date}`;
+      const id = idRef.current && keyRef.current === recKey ? idRef.current : makeId();
+      const body = {
+        member: cur.member.trim(), date: cur.date || today(), goal: cur.goal || "", pain: cur.pain || "",
+        exercises: cur.exercises.filter((e) => !isBlank(e)).map((e) => ({
+          id: e.id, name: e.name.trim(), weight: String(e.weight || ""), reps: String(e.reps || ""), sets: String(e.sets || ""),
+          ...(typeof e.step === "number" ? { step: e.step } : {}),
+        })),
+        commentRaw: cur.commentRaw || "", commentAi: cur.commentAi || "", savedAt: Date.now(),
+      };
+      try { await db.doc(`logs/${id}`).set(body); }
+      catch (e) { fail(e && e.code === "quota_exceeded" ? "저장 공간이 가득 찼어요. 오래된 기록을 지워주세요" : "저장하지 못했어요. 인터넷 연결을 확인해주세요"); }
+      setCurrentId(id); idRef.current = id; keyRef.current = recKey; setSaved(true);
+      setMessage(`${body.member}님 운동일지를 저장했어요`);
+      return { ...body, id };
+    };
+    const onSave = async () => { setBusy("save"); try { await saveLog(); } catch { /* 메시지 표시됨 */ } finally { setBusy(""); } };
+
+    const exportImage = async () => {
+      setBusy("image");
+      try {
+        const snap = await saveLog();
+        const dl = downloadsRef.current;
+        if (!dl) { setMessage("저장했어요. 이 화면에서는 이미지 내보내기를 쓸 수 없어요"); return; }
+        const blobs = await createReports(snap);
+        for (const [i, blob] of blobs.entries()) {
+          await dl.save({ filename: `${snap.date}_${snap.member}_운동일지${blobs.length > 1 ? `_${i + 1}` : ""}.png`, data: blob });
+        }
+        setMessage("운동일지 이미지를 내보냈어요");
+      } catch (e) {
+        if (e && e.shown) return;
+        const code = e && e.code;
+        setMessage(code === "declined" ? "이미지 내보내기를 취소했어요" : code === "rate_limited" ? "잠시 후 다시 눌러주세요" : "이미지를 만들지 못했어요");
+      } finally { setBusy(""); }
+    };
+
+    /* 코멘트 정리 (Claude) */
+    const organize = async () => {
+      const cur = logRef.current;
+      if (!cur.commentRaw.trim()) { setMessage("간단 메모를 먼저 입력해주세요"); return; }
+      const sample = sampleRef.current;
+      if (!sample) { setMessage("이 화면에서는 Claude 정리 기능을 쓸 수 없어요"); return; }
+      const extra = [
+        settings.tone && `말투와 작성 기준: ${settings.tone}`,
+        settings.mustInclude && `꼭 포함할 내용: ${settings.mustInclude}`,
+        settings.avoid && `피할 표현: ${settings.avoid}`,
+        settings.examples && `원하는 작성 예시:\n${settings.examples}`,
+      ].filter(Boolean).join("\n");
+      const exercises = cur.exercises.filter((e) => e.name.trim()).map(({ name, weight, reps, sets }) => ({ name, weight, reps, sets }));
+      const prompt = `${FORMAT_RULES}\n\n트레이너가 저장한 추가 작성 기준:\n${extra || "회원이 이해하기 쉬운 존댓말로 간결하고 따뜻하게 작성한다."}\n\n---\n회원: ${cur.member || "회원"}\n운동 기록: ${JSON.stringify(exercises)}\n트레이너 간단 메모: ${cur.commentRaw.trim()}\n\n위 형식에 맞는 회원용 운동일지 본문만 출력하세요.`;
+      setOrganizing(true); setMessage("코멘트를 정리하는 중이에요");
+      try {
+        const { text } = await sample(prompt, { cache: false, onText: ({ text }) => setLog((c) => ({ ...c, commentAi: text })) });
+        edit((c) => ({ ...c, commentAi: text.trim().replace(/오늘은/g, "이번수업에서는") }));
+        setMessage("코멘트를 정리했어요");
+      } catch (e) {
+        const code = e && e.code;
+        if (code === "refused") setLog((c) => ({ ...c, commentAi: "" }));
+        if (code !== "cancelled") setMessage(sampleErrorCopy(code));
+      } finally { setOrganizing(false); }
+    };
+
+    const saveSettings = async () => {
+      const db = dbRef.current;
+      if (!db) { setMessage("저장소에 연결되지 않아 설정을 저장할 수 없어요"); return; }
+      setSavingSettings(true);
+      try {
+        const clean = (v) => String(v || "").trim().slice(0, 5000);
+        const next = { tone: clean(settings.tone) || defaultSettings.tone, mustInclude: clean(settings.mustInclude), avoid: clean(settings.avoid), examples: clean(settings.examples) };
+        await db.doc("config/comment-settings").set({ ...next, updatedAt: Date.now() });
+        setSettings(next); setSettingsOpen(false); setMessage("정리 설정을 저장했어요");
+      } catch { setMessage("정리 설정을 저장하지 못했어요"); }
+      finally { setSavingSettings(false); }
+    };
+
+    /* 회원 조회 */
+    const openLookup = () => { setLookupInput(member); setLookupQuery(member); setPendingDeleteLog(""); setLookupError(""); setLookupOpen(true); };
+    const runLookup = (ev) => { ev && ev.preventDefault(); setLookupQuery(lookupInput.trim()); setPendingDeleteLog(""); setLookupError(""); };
+    const deleteLog = async (r) => {
+      const db = dbRef.current; if (!db) return;
+      setDeletingLog(r.id);
+      try {
+        await db.doc(`logs/${r.id}`).delete();
+        if (r.id === currentId) setCurrentId("");
+        setPendingDeleteLog(""); setMessage(`${r.member}님 ${r.date} 기록을 삭제했어요`);
+      } catch { setLookupError("기록을 삭제하지 못했어요"); }
+      finally { setDeletingLog(""); }
+    };
+
+    const resetLog = () => { ls.del(DRAFT_KEY); setLog(initialLog()); setCurrentId(""); keyRef.current = ""; setSaved(false); setPendingHistory(null); setMessage("새 운동일지"); };
+
+    /* ───── 화면 ───── */
+    const statusIcon = saved ? "check" : "pen";
+    return html`
+      <${Intro} />
+      <header className="topbar">
+        <div className="brand"><span className="brand-mark"><${Icon} name="dumbbell" /></span><div><strong>트레이너 운동일지</strong><span>ACERO GYM</span></div></div>
+        <div className=${"status" + (saved ? " ok" : "")} role="status" aria-live="polite"><${Icon} name=${statusIcon} /><span>${message}</span></div>
+        <div className="top-actions">
+          <button className="ghost" type="button" onClick=${openLookup} aria-label="회원 조회"><${Icon} name="userSearch" /><span>회원 조회</span></button>
+          <button className="ghost" type="button" onClick=${() => setSettingsOpen(true)} aria-label="정리 설정"><${Icon} name="sliders" /><span>정리 설정</span></button>
+          <button className="ghost" type="button" onClick=${resetLog} aria-label="새 일지"><${Icon} name="reset" /><span>새 일지</span></button>
+        </div>
+      </header>
+
+      ${dbStatus === "off" && html`<div className="banner" style=${{ marginInline: "max(16px, env(safe-area-inset-left, 0px))" }}>기록 저장소에 연결되지 않았어요. claude.ai에 로그인한 상태에서 열면 저장과 불러오기가 됩니다. 지금 입력한 내용은 이 기기에만 임시저장돼요.</div>`}
+
+      <div className="workspace">
+        <section className="panel" aria-label="운동일지 입력">
+          <div className="head">
+            <div><span className="eyebrow">SESSION INFO</span><h1>오늘의 수업</h1></div>
+            <span className="pill"><${Icon} name="shield" /> 작성 중 자동 임시저장</span>
+          </div>
+          <div className="info-grid">
+            <label className="field"><span>회원 이름</span>
+              <input id="member" list="recent-members" value=${log.member} placeholder="이름을 입력하세요" autoComplete="off"
+                onChange=${(e) => edit((c) => ({ ...c, member: e.target.value }))} />
+              <datalist id="recent-members">${recentMembers.map((n) => html`<option key=${n} value=${n} />`)}</datalist>
+            </label>
+            <label className="field"><span><${Icon} name="calendar" /> 날짜</span>
+              <input id="date" type="date" value=${log.date} onChange=${(e) => edit((c) => ({ ...c, date: e.target.value }))} />
+            </label>
+          </div>
+          ${recentMembers.length > 0 && html`<div className="chips" aria-label="최근 회원 빠른 선택"><small>최근 회원</small>
+            ${recentMembers.slice(0, 8).map((n) => html`<button key=${n} type="button" className=${"chip" + (member === n ? " on" : "")} onClick=${() => edit((c) => ({ ...c, member: n }))}>${n}</button>`)}
+          </div>`}
+          ${dbStatus === "ready" && records.length === 0 && html`<p className="hint" style=${{ marginTop: "12px" }}>아직 저장된 수업이 없어요. 회원 이름과 운동을 입력하고 저장하면, 다음 수업부터 회원별 지난 기록이 여기에 나타납니다.</p>`}
+
+          ${member && memberHistory.length > 0 && html`<section className="history" aria-label=${`${member} 회원 최근 운동일지`}>
+            <div className="history-title"><${Icon} name="history" /><strong>${member}님 과거 운동기록</strong><small>최근 ${memberHistory.length}개 · 눌러서 종목 불러오기</small></div>
+            ${pendingHistory && html`<div className="confirm-bar"><span>지금 입력한 운동을 ${fmtShort(pendingHistory.date)} 종목으로 바꿀까요?</span>
+              <button className="small-btn" type="button" onClick=${() => applyHistory(pendingHistory)}>바꾸기</button>
+              <button className="small-btn" type="button" onClick=${() => setPendingHistory(null)}>취소</button></div>`}
+            <div className="history-strip">
+              ${memberHistory.map((r) => html`<button key=${r.id} type="button" className="h-card" onClick=${() => pickHistory(r)}>
+                <time>${fmtLong(r.date)}</time>
+                <div className="rows">${(r.exercises || []).filter((e) => e.name.trim()).map((e, i) => html`<span key=${i}><em>${e.name}</em><b className="num">${summary(e)}</b></span>`)}</div>
+                <small>운동 종목 불러오기</small>
+              </button>`)}
+            </div>
+          </section>`}
+
+          <div className="head section-gap">
+            <div><span className="eyebrow">PROGRAM</span><h2>운동 기록</h2></div>
+            <button className="mini" type="button" onClick=${() => edit((c) => ({ ...c, exercises: [...c.exercises, emptyExercise()] }))}><${Icon} name="plus" /> 종목 추가</button>
+          </div>
+
+          <div className="library">
+            <div className="library-head"><span className="lbl"><${Icon} name="search" /> 운동 종목 보관함</span><small>저장한 종목을 눌러 바로 추가하세요</small></div>
+            <div className="adders">
+              <form className="inline-form" onSubmit=${(e) => { e.preventDefault(); const n = search.trim(); if (n) { addExercise(n); setSearch(""); } }}>
+                <input id="lib-search" type="search" value=${search} onChange=${(e) => setSearch(e.target.value)} placeholder="종목 검색" aria-label="저장한 운동 종목 검색" autoComplete="off" />
+                <button type="submit">불러오기</button>
+              </form>
+              <form className="inline-form alt" onSubmit=${saveNewExercise}>
+                <input id="lib-new" list="center-library" value=${newName} onChange=${(e) => setNewName(e.target.value)} placeholder="새 종목 이름" aria-label="새 운동 종목 이름" autoComplete="off" />
+                <datalist id="center-library">${centerLibrary.map((n) => html`<option key=${n} value=${n} />`)}</datalist>
+                <button type="submit"><${Icon} name="bookmark" /> 저장</button>
+              </form>
+            </div>
+            <div className="saved-list" aria-label="저장한 운동 종목">
+              ${matching.map((n) => editing === n
+                ? html`<div className="saved-item" key=${n}><form onSubmit=${(e) => renameExercise(e, n)}>
+                    <input id="lib-rename" value=${editingName} onChange=${(e) => setEditingName(e.target.value)} aria-label=${`${n} 새 이름`} autoFocus />
+                    <button type="submit" aria-label="이름 바꾸기 저장" style=${{ border: 0, background: "none", padding: "7px 9px", color: "var(--brand)" }}><${Icon} name="check" /></button>
+                    <button type="button" aria-label="취소" style=${{ border: 0, background: "none", padding: "7px 9px", color: "var(--muted)" }} onClick=${() => { setEditing(""); setEditingName(""); }}><${Icon} name="x" /></button>
+                  </form></div>`
+                : pendingDeleteExercise === n
+                  ? html`<div className="saved-item deleting" key=${n}><span>${n} 삭제할까요?</span>
+                      <button type="button" className="del" onClick=${() => deleteExercise(n)}>삭제</button>
+                      <button type="button" onClick=${() => setPendingDeleteExercise("")}>취소</button></div>`
+                  : html`<div className="saved-item" key=${n}>
+                      <button type="button" className="pick" onClick=${() => { addExercise(n); setSearch(""); }}>${n}</button>
+                      <button type="button" aria-label=${`${n} 이름 바꾸기`} onClick=${() => { setEditing(n); setEditingName(n); setPendingDeleteExercise(""); }}><${Icon} name="pen" /></button>
+                      <button type="button" aria-label=${`${n} 삭제`} onClick=${() => { setPendingDeleteExercise(n); setEditing(""); }}><${Icon} name="trash" /></button>
+                    </div>`)}
+              ${matching.length === 0 && html`<span className="empty-note">${search.trim() ? "검색한 종목이 보관함에 없어요. 불러오기를 누르면 이 이름으로 추가돼요." : "보관함이 비어 있어요. 오른쪽 칸에서 자주 쓰는 종목을 저장해두세요."}</span>`}
+              ${!search.trim() && library.length > matching.length && html`<span className="empty-note">외 ${library.length - matching.length}개 · 검색으로 찾기</span>`}
+            </div>
+          </div>
+
+          <div className="ex-list">
+            ${log.exercises.map((e, i) => {
+              const last = e.name.trim() ? lastRecords[keyOf(e.name)] : null;
+              return html`<div className="ex" key=${e.id}>
+                <div className="ex-head">
+                  <span className="ex-no num">${pad(i + 1)}</span>
+                  <input id=${"ex-name-" + e.id} className="ex-name" value=${e.name} placeholder="운동 이름" aria-label=${`${i + 1}번 운동 이름`} autoComplete="off"
+                    onChange=${(ev) => updateExercise(e.id, "name", ev.target.value)} />
+                  <button className="icon-btn" type="button" aria-label=${`${i + 1}번 운동 삭제`} onClick=${() => edit((c) => ({ ...c, exercises: c.exercises.filter((x) => x.id !== e.id) }))}><${Icon} name="trash" /></button>
+                </div>
+                <div className="ex-controls">
+                  <div className="stepper"><button type="button" aria-label="중량 줄이기" onClick=${() => bump(e.id, "weight", -1)}>−</button>
+                    <label><input id=${"ex-w-" + e.id} inputMode="decimal" value=${e.weight} aria-label="중량" onChange=${(ev) => updateExercise(e.id, "weight", ev.target.value)} /><span>kg</span></label>
+                    <button type="button" aria-label="중량 늘리기" onClick=${() => bump(e.id, "weight", 1)}>+</button></div>
+                  <select id=${"ex-step-" + e.id} className="step-select" aria-label="중량 조절 단위" value=${String(stepFor(e))} onChange=${(ev) => changeStep(e, Number(ev.target.value))}>
+                    ${weightSteps.map((s) => html`<option key=${s} value=${String(s)}>±${s}kg</option>`)}
+                  </select>
+                  <div className="stepper"><button type="button" aria-label="횟수 줄이기" onClick=${() => bump(e.id, "reps", -1)}>−</button>
+                    <label><input id=${"ex-r-" + e.id} inputMode="numeric" value=${e.reps} aria-label="횟수" onChange=${(ev) => updateExercise(e.id, "reps", ev.target.value)} /><span>회</span></label>
+                    <button type="button" aria-label="횟수 늘리기" onClick=${() => bump(e.id, "reps", 1)}>+</button></div>
+                  <div className="stepper"><button type="button" aria-label="세트 줄이기" onClick=${() => bump(e.id, "sets", -1)}>−</button>
+                    <label><input id=${"ex-s-" + e.id} inputMode="numeric" value=${e.sets} aria-label="세트" onChange=${(ev) => updateExercise(e.id, "sets", ev.target.value)} /><span>세트</span></label>
+                    <button type="button" aria-label="세트 늘리기" onClick=${() => bump(e.id, "sets", 1)}>+</button></div>
+                </div>
+                ${e.name.trim() && html`<div className="ex-last"><b>지난 운동</b>${last
+                  ? html`<time>${fmtShort(last.date)}</time><strong className="num">${summary(last)}</strong>`
+                  : html`<span className="none">이 회원의 이전 기록이 없어요</span>`}</div>`}
+              </div>`;
+            })}
+          </div>
+
+          <div className="coach">
+            <label className="field"><span>통증·주의사항</span>
+              <textarea id="pain" value=${log.pain} placeholder="없으면 비워두세요" onChange=${(e) => edit((c) => ({ ...c, pain: e.target.value }))}></textarea>
+            </label>
+          </div>
+        </section>
+
+        <aside className="panel note-panel" aria-label="코멘트와 공유">
+          <div className="head">
+            <div><span className="eyebrow">COMMENT</span><h2>간단 메모</h2></div>
+            <span className="pill"><${Icon} name="shield" /> 저장소에 보관</span>
+          </div>
+          <label className="comment-raw"><span className="sr-only" hidden>간단 메모</span>
+            <textarea id="memo" aria-label="간단 메모" value=${log.commentRaw} placeholder="예: 로테이션로우 어깨 안 올라가게 잘 당김. 와이드로우 팔 방향 좋아짐."
+              onChange=${(e) => edit((c) => ({ ...c, commentRaw: e.target.value, commentAi: "" }))}></textarea>
+          </label>
+          <button className="organize" type="button" onClick=${organize} disabled=${organizing || !canSample} title=${canSample ? "" : "claude.ai에서 열면 쓸 수 있어요"}>
+            <${Icon} name="sparkles" /> ${organizing ? "정리 중..." : "Claude로 정리하기"}
+          </button>
+          <label className="field comment-result"><span>정리된 코멘트 <small className="hint">직접 수정할 수 있어요</small></span>
+            <textarea id="comment-ai" value=${log.commentAi} placeholder="정리된 트레이너 코멘트가 여기에 표시됩니다." onChange=${(e) => edit((c) => ({ ...c, commentAi: e.target.value }))}></textarea>
+          </label>
+          <div className="actions">
+            <button className="btn secondary" type="button" onClick=${onSave} disabled=${!!busy}><${Icon} name="save" /> ${busy === "save" ? "저장 중..." : "저장"}</button>
+            <button className="btn primary" type="button" onClick=${exportImage} disabled=${!!busy}><${Icon} name="send" /> ${busy === "image" ? "만드는 중..." : "저장하고 이미지 보내기"}</button>
+          </div>
+          <p className="share-note">회원별 기록과 코멘트는 이 운동일지의 저장소에 보관돼서 다른 기기에서도 이어서 볼 수 있어요. 이미지 보내기를 누르면 Claude 앱에서는 공유 창이 열리고, 브라우저에서는 사진 파일로 저장됩니다.</p>
+        </aside>
+      </div>
+
+      <${Modal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} labelledBy="settings-title">
+        <div className="dlg">
+          <div className="dlg-head"><div><h2 id="settings-title">코멘트 정리 설정</h2><p>여기에 저장한 기준과 예시가 다음 정리부터 적용돼요.</p></div>
+            <button className="icon-btn" type="button" aria-label="닫기" onClick=${() => setSettingsOpen(false)}><${Icon} name="x" /></button></div>
+          <div></div>
+          <div className="dlg-body"><div className="settings-grid">
+            <label className="field"><span>말투와 작성 기준</span><textarea id="set-tone" value=${settings.tone} onChange=${(e) => setSettings((s) => ({ ...s, tone: e.target.value }))} placeholder="예: 회원이 이해하기 쉬운 존댓말로 짧고 따뜻하게"></textarea></label>
+            <label className="field"><span>꼭 포함할 내용</span><textarea id="set-must" value=${settings.mustInclude} onChange=${(e) => setSettings((s) => ({ ...s, mustInclude: e.target.value }))} placeholder="예: 좋아진 점과 다음 수업에서 확인할 점"></textarea></label>
+            <label className="field"><span>피할 표현</span><textarea id="set-avoid" value=${settings.avoid} onChange=${(e) => setSettings((s) => ({ ...s, avoid: e.target.value }))} placeholder="예: 통증을 진단하는 표현, 과장된 표현"></textarea></label>
+            <label className="field"><span>원하는 작성 예시</span><textarea id="set-ex" value=${settings.examples} onChange=${(e) => setSettings((s) => ({ ...s, examples: e.target.value }))} placeholder=${"예:\n랫풀다운\n어깨가 들리지 않게 팔꿈치를 아래로 당겨 등 근육을 사용했습니다.\n\n이번 수업 포인트\n등과 날개뼈 주변을 움직이는 운동에 집중했습니다."}></textarea></label>
+          </div></div>
+          <div className="dlg-foot"><button className="btn primary" type="button" onClick=${saveSettings} disabled=${savingSettings}><${Icon} name="save" /> ${savingSettings ? "저장 중..." : "설정 저장"}</button></div>
+        </div>
+      <//>
+
+      <${Modal} open=${lookupOpen} onClose=${() => setLookupOpen(false)} labelledBy="lookup-title">
+        <div className="dlg">
+          <div className="dlg-head"><div><h2 id="lookup-title">회원 운동기록 조회</h2><p>회원 이름을 검색하면 지금까지 저장한 수업별 운동을 볼 수 있어요.</p></div>
+            <button className="icon-btn" type="button" aria-label="닫기" onClick=${() => setLookupOpen(false)}><${Icon} name="x" /></button></div>
+          <form className="lookup-form" onSubmit=${runLookup}>
+            <input id="lookup" type="search" list="lookup-members" value=${lookupInput} onChange=${(e) => setLookupInput(e.target.value)} placeholder="회원 이름 검색" aria-label="조회할 회원 이름" autoComplete="off" />
+            <datalist id="lookup-members">${recentMembers.map((n) => html`<option key=${n} value=${n} />`)}</datalist>
+            <button type="submit">조회</button>
+          </form>
+          <div className="dlg-body">
+            ${lookupResults.length > 0 && html`<div className="lookup-summary"><strong>${lookupQuery}님</strong><span>총 ${lookupResults.length}회 수업</span></div>`}
+            ${lookupError && html`<p className="err">${lookupError}</p>`}
+            ${lookupQuery && !lookupResults.length && html`<p className="hint">${lookupQuery}님의 저장된 운동 기록이 없어요.</p>`}
+            ${lookupSuggestions.length > 0 && html`<div className="chips"><small>혹시 이 회원인가요?</small>${lookupSuggestions.map((n) => html`<button key=${n} type="button" className="chip" onClick=${() => { setLookupInput(n); setLookupQuery(n); }}>${n}</button>`)}</div>`}
+            ${!lookupQuery && html`<p className="hint">${recentMembers.length ? "이름을 입력하거나 최근 회원을 골라주세요." : "아직 저장된 수업이 없어요."}</p>`}
+            ${!lookupQuery && recentMembers.length > 0 && html`<div className="chips">${recentMembers.map((n) => html`<button key=${n} type="button" className="chip" onClick=${() => { setLookupInput(n); setLookupQuery(n); }}>${n}</button>`)}</div>`}
+            ${lookupResults.map((r) => html`<article className="rec" key=${r.id}>
+              <header><time>${fmtLong(r.date)}</time>
+                <div className="rec-actions">
+                  ${r.pain && html`<span className="warn">주의: ${r.pain}</span>`}
+                  ${pendingDeleteLog === r.id
+                    ? html`<button type="button" className="small-btn danger solid" disabled=${deletingLog === r.id} onClick=${() => deleteLog(r)}>${deletingLog === r.id ? "삭제 중..." : "삭제 확인"}</button>
+                           <button type="button" className="small-btn" disabled=${!!deletingLog} onClick=${() => setPendingDeleteLog("")}>취소</button>`
+                    : html`<button type="button" className="small-btn danger" onClick=${() => { setPendingDeleteLog(r.id); setLookupError(""); }}>이 회차 삭제</button>`}
+                </div>
+              </header>
+              <div className="rec-rows">
+                ${(r.exercises || []).filter((e) => e.name.trim()).map((e, i) => html`<div key=${i}><strong>${e.name}</strong><span className="num">${summary(e)}</span></div>`)}
+                ${!(r.exercises || []).some((e) => e.name.trim()) && html`<p>저장된 운동 종목이 없어요.</p>`}
+              </div>
+            </article>`)}
+          </div>
+          <div></div>
+        </div>
+      <//>
+    `;
+  }
+
+  ReactDOM.createRoot(document.getElementById("app")).render(html`<${App} />`);
+})();
+</script>
